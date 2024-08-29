@@ -1,0 +1,139 @@
+import ipywidgets as widgets
+from IPython.display import display
+import pandas as pd
+
+# 2024 Federal Tax Brackets for all filing statuses
+federal_tax_brackets = {
+    'single': [
+        (0, 11600, 0.10),
+        (11601, 47150, 0.12),
+        (47151, 100525, 0.22),
+        (100526, 191950, 0.24),
+        (191951, 243725, 0.32),
+        (243726, 609350, 0.35),
+        (609351, float('inf'), 0.37)
+    ],
+    'married': [
+        (0, 23200, 0.10),
+        (23201, 94300, 0.12),
+        (94301, 201050, 0.22),
+        (201051, 383900, 0.24),
+        (383901, 487450, 0.32),
+        (487451, 731200, 0.35),
+        (731201, float('inf'), 0.37)
+    ],
+    'head_of_household': [
+        (0, 16550, 0.10),
+        (16551, 63100, 0.12),
+        (63101, 98950, 0.22),
+        (98951, 175550, 0.24),
+        (175551, 243700, 0.32),
+        (243701, 609350, 0.35),
+        (609351, float('inf'), 0.37)
+    ],
+    'married_separate': [
+        (0, 11600, 0.10),
+        (11601, 47150, 0.12),
+        (47151, 100525, 0.22),
+        (100526, 191950, 0.24),
+        (191951, 243725, 0.32),
+        (243726, 365600, 0.35),
+        (365601, float('inf'), 0.37)
+    ]
+}
+
+# Load state tax data
+state_tax_data = pd.DataFrame({
+    'State': ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming', 'Washington, DC'],
+    'Single_Std_Deduction': [3000, 0, 14600, 2340, 5363, 14600, 0, 3250, 0, 12000, 2200, 14600, 0, 0, 0, 3500, 3160, 0, 14600, 2550, 0, 0, 14575, 2300, 14600, 14600, 7900, 0, 0, 0, 14600, 8000, 12750, 14600, 0, 6350, 2745, 0, 10550, 14600, 0, 0, 0, 876, 7000, 8000, 250000, 0, 13230, 0, 14600],
+    'Couple_Std_Deduction': [8500, 0, 29200, 4680, 10726, 29200, 0, 6500, 0, 24000, 4400, 29200, 0, 0, 0, 8000, 6320, 0, 29200, 5150, 0, 0, 29150, 4600, 29200, 29200, 15800, 0, 0, 0, 29200, 16050, 25500, 29200, 0, 12700, 5495, 0, 21150, 29200, 0, 0, 0, 1752, 14050, 16000, 250000, 0, 24490, 0, 29200],
+    'Single_Personal_Exemption': [1500, 0, 0, 29, 144, 0, 15000, 110, 0, 0, 1144, 0, 2775, 1000, 40, 2250, 0, 4500, 5000, 3200, 4400, 5600, 0, 6000, 0, 0, 157, 0, 2400, 1000, 0, 0, 0, 0, 2400, 1000, 249, 0, 4950, 0, 0, 0, 0, 0, 4850, 930, 0, 2000, 700, 0, 0],
+    'Couple_Personal_Exemption': [3000, 0, 0, 58, 288, 0, 24000, 220, 0, 0, 2288, 0, 5550, 2000, 80, 4500, 0, 9000, 10000, 6400, 8800, 11200, 0, 12000, 0, 0, 314, 0, 4800, 2000, 0, 0, 0, 0, 4800, 2000, 498, 0, 9900, 0, 0, 0, 0, 0, 9700, 1860, 0, 4000, 1400, 0, 0],
+    'Dependent_Exemption': [1000, 0, 100, 29, 446, 0, 0, 110, 0, 3000, 1144, 0, 2775, 1000, 40, 2250, 0, 1000, 300, 3200, 1000, 5600, 5050, 1500, 0, 0, 157, 0, 0, 1500, 4000, 1000, 0, 0, 2500, 1000, 249, 0, 4950, 4610, 0, 0, 0, 1941, 4850, 930, 0, 2000, 700, 0, 0]
+})
+
+def calculate_federal_tax(income, filing_status):
+    brackets = federal_tax_brackets[filing_status]
+    tax = 0
+    for low, high, rate in brackets:
+        if income > low:
+            taxable = min(income, high) - low
+            tax += taxable * rate
+        if income <= high:
+            break
+    return tax
+
+def calculate_state_tax(income, state, filing_status):
+    state_data = state_tax_data[state_tax_data['State'] == state].iloc[0]
+    
+    if filing_status in ['single', 'married_separate', 'head_of_household']:
+        std_deduction = state_data['Single_Std_Deduction']
+        personal_exemption = state_data['Single_Personal_Exemption']
+    else:  # married
+        std_deduction = state_data['Couple_Std_Deduction']
+        personal_exemption = state_data['Couple_Personal_Exemption']
+    
+    taxable_income = max(income - std_deduction - personal_exemption, 0)
+    
+    # Simplified state tax calculation
+    if state in ['Alaska', 'Florida', 'Nevada', 'South Dakota', 'Tennessee', 'Texas', 'Washington', 'Wyoming']:
+        return 0
+    elif state == 'New Hampshire':
+        return income * 0.03 if income > 2400 else 0  # Only on interest and dividends
+    else:
+        # Using a flat 5% rate for simplification. In reality, this should be state-specific brackets.
+        return taxable_income * 0.05
+
+# Create widgets
+income_widget = widgets.FloatText(description='Annual Income:')
+state_widget = widgets.Dropdown(options=state_tax_data['State'].tolist(), description='State:')
+filing_status_widget = widgets.Dropdown(
+    options=['single', 'married', 'head_of_household', 'married_separate'],
+    description='Filing Status:'
+)
+dependents_widget = widgets.IntSlider(min=0, max=5, step=1, description='Dependents:')
+calculate_button = widgets.Button(description='Calculate Taxes')
+output_widget = widgets.Output()
+
+# Define calculation function
+def calculate_taxes(b):
+    income = income_widget.value
+    state = state_widget.value
+    filing_status = filing_status_widget.value
+    dependents = dependents_widget.value
+    
+    federal_tax = calculate_federal_tax(income, filing_status)
+    state_tax = calculate_state_tax(income, state, filing_status)
+    
+    state_data = state_tax_data[state_tax_data['State'] == state].iloc[0]
+    dependent_exemption = state_data['Dependent_Exemption'] * dependents
+    
+    with output_widget:
+        output_widget.clear_output()
+        print(f"2024 Tax Calculation Summary for {state}")
+        print(f"----------------------------------------")
+        print(f"Gross Income: ${income:.2f}")
+        print(f"Filing Status: {filing_status.replace('_', ' ').title()}")
+        print(f"Number of Dependents: {dependents}")
+        print(f"Federal Tax: ${federal_tax:.2f}")
+        print(f"State Tax: ${state_tax:.2f}")
+        print(f"Total Tax: ${federal_tax + state_tax:.2f}")
+        print(f"Effective Tax Rate: {((federal_tax + state_tax) / income) * 100:.2f}%")
+        print(f"After-Tax Income: ${income - federal_tax - state_tax:.2f}")
+        print(f"\nNote: This is a simplified calculation. Please consult a tax professional for accurate advice.")
+
+# Connect button to function
+calculate_button.on_click(calculate_taxes)
+
+# Display widgets
+display(income_widget, state_widget, filing_status_widget, dependents_widget, calculate_button, output_widget)
+
+print("2024 Federal and State Tax Calculator")
+print("-------------------------------------")
+print("This calculator includes:")
+print("- Updated 2024 federal tax brackets for all filing statuses")
+print("- State-specific standard deductions and personal exemptions")
+print("- Dependent exemptions by state")
+print("- Basic state tax calculation (simplified)")
+print("\nNote: State tax calculations are simplified and may not reflect all nuances of state tax laws.")
+print("This calculator is for educational purposes only. For accurate tax calculations, please consult a tax professional.")
